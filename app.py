@@ -1,11 +1,10 @@
-import os
 import json
-import gspread
-import pandas as pd
 import streamlit as st
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+import gspread
+import pandas as pd
 
 # Define the required scopes for Google Sheets API
 SCOPES = [
@@ -13,15 +12,17 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-# Path to your OAuth credentials.json file
-CREDENTIALS_FILE = "client_secret_481874012972-k9bl8dojpo95mmpgr1v160njgc6jq6t2.apps.googleusercontent.com.json"
-
 
 # Function to authenticate interactively via OAuth
 def authenticate_user():
-    # Check if token.json exists (to reuse previous authentication)
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    # Load OAuth client configuration from Streamlit Secrets
+    credentials_json = st.secrets["credentials_json"]
+
+    # Check if credentials are already stored in session_state
+    if "token" in st.session_state:
+        creds = Credentials.from_authorized_user_info(
+            json.loads(st.session_state["token"]), SCOPES
+        )
         if creds and creds.valid:
             return creds
         if creds and creds.expired and creds.refresh_token:
@@ -29,12 +30,11 @@ def authenticate_user():
             return creds
 
     # Perform interactive login via OAuth flow
-    flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+    flow = InstalledAppFlow.from_client_config(json.loads(credentials_json), SCOPES)
     creds = flow.run_local_server(port=0)
 
-    # Save the credentials for future use
-    with open("token.json", "w") as token_file:
-        token_file.write(creds.to_json())
+    # Store credentials in session_state for reuse in the current session
+    st.session_state["token"] = creds.to_json()
 
     return creds
 
