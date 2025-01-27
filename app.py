@@ -29,9 +29,9 @@ def authenticate_user():
             creds.refresh(Request())
             return creds
 
-    # Perform interactive login via OAuth flow
+    # Use the console-based flow if no GUI browser is available
     flow = InstalledAppFlow.from_client_config(json.loads(credentials_json), SCOPES)
-    creds = flow.run_local_server(port=0)
+    creds = flow.run_console()  # Console-based flow
 
     # Store credentials in session_state for reuse in the current session
     st.session_state["token"] = creds.to_json()
