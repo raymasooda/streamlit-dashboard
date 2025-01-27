@@ -1,9 +1,11 @@
 import os
 import json
-from google.oauth2.service_account import Credentials
 import gspread
 import pandas as pd
 import streamlit as st
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 
 # Define the required scopes for Google Sheets API
 SCOPES = [
@@ -11,23 +13,36 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
+# Path to your OAuth credentials.json file
+CREDENTIALS_FILE = "client_secret_481874012972-k9bl8dojpo95mmpgr1v160njgc6jq6t2.apps.googleusercontent.com.json"
 
-# Function to load credentials from the environment variable
-def load_credentials():
-    # Read the JSON content from the GOOGLE_APPLICATION_CREDENTIALS environment variable
-    credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-    if not credentials_json:
-        raise ValueError("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
-    # Parse the JSON content into a dictionary
-    credentials_dict = json.loads(credentials_json)
-    # Create Credentials object from the dictionary
-    return Credentials.from_service_account_info(credentials_dict, scopes=SCOPES)
+
+# Function to authenticate interactively via OAuth
+def authenticate_user():
+    # Check if token.json exists (to reuse previous authentication)
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+        if creds and creds.valid:
+            return creds
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            return creds
+
+    # Perform interactive login via OAuth flow
+    flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+    creds = flow.run_local_server(port=0)
+
+    # Save the credentials for future use
+    with open("token.json", "w") as token_file:
+        token_file.write(creds.to_json())
+
+    return creds
 
 
 # Function to fetch data from Google Sheets using the sheet ID
 def fetch_data_from_sheet_by_id(sheet_id, worksheet_index=0):
-    # Authenticate using the credentials
-    credentials = load_credentials()
+    # Authenticate the user interactively
+    credentials = authenticate_user()
     client = gspread.authorize(credentials)
 
     # Open the Google Sheet by ID
@@ -42,7 +57,9 @@ def fetch_data_from_sheet_by_id(sheet_id, worksheet_index=0):
 
 # Streamlit app
 st.title("Google Sheets Dashboard by ID")
-st.write("This app dynamically fetches data from a Google Sheet using its unique ID!")
+st.write(
+    "This app dynamically fetches data from a Google Sheet using an interactive sign-in!"
+)
 
 # Input field for Google Sheet ID
 sheet_id = st.text_input("Enter your Google Sheet ID:", value="")
