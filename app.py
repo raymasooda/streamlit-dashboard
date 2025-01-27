@@ -29,9 +29,25 @@ def authenticate_user():
             creds.refresh(Request())
             return creds
 
-    # Use the console-based flow if no GUI browser is available
-    flow = InstalledAppFlow.from_client_config(json.loads(credentials_json), SCOPES)
-    creds = flow.run_console()  # Console-based flow
+    # Attempt to use the local server for authentication
+    try:
+        flow = InstalledAppFlow.from_client_config(json.loads(credentials_json), SCOPES)
+        creds = flow.run_local_server(port=0)
+    except Exception:
+        # If the local server fails (e.g., no browser), use manual console authentication
+        st.warning("No browser available. Falling back to manual authentication.")
+        flow = InstalledAppFlow.from_client_config(json.loads(credentials_json), SCOPES)
+        auth_url, _ = flow.authorization_url(prompt="consent")
+
+        # Show the authorization URL to the user
+        st.write("Visit the following URL to authenticate:")
+        st.code(auth_url, language="markdown")
+
+        # Prompt the user to enter the authorization code
+        auth_code = st.text_input("Enter the authorization code:")
+        if not auth_code:
+            st.stop()  # Stop execution until the user enters the code
+        creds = flow.fetch_token(code=auth_code)
 
     # Store credentials in session_state for reuse in the current session
     st.session_state["token"] = creds.to_json()
