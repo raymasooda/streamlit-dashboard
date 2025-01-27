@@ -21,7 +21,7 @@ def load_credentials():
     # Parse the JSON content into a dictionary
     credentials_dict = json.loads(credentials_json)
     # Create Credentials object from the dictionary
-    return Credentials.from_authorized_user_info(credentials_dict, SCOPES)
+    return Credentials.from_service_account_info(credentials_dict, scopes=SCOPES)
 
 
 # Function to fetch data from Google Sheets using the sheet ID
